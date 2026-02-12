@@ -1,0 +1,1 @@
+export { getFirewallRules } from './firewallRuleApi'

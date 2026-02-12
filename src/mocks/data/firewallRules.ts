@@ -1,15 +1,6 @@
-export type MockFirewallRule = {
-  id: string
-  name: string
-  source: string
-  destination: string
-  protocol: 'TCP' | 'UDP' | 'ICMP'
-  port: string
-  action: 'allow' | 'deny'
-  enabled: boolean
-}
+import type { FirewallRule } from '@/entities/firewall-rule'
 
-export const firewallRules: MockFirewallRule[] = [
+export const firewallRules: FirewallRule[] = [
   {
     id: 'rule-001',
     name: 'Allow HTTPS Outbound',

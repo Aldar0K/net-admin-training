@@ -1,7 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import { App } from '@/app'
 import './index.css'
-import App from './App.tsx'
 
 const renderApp = () => {
   createRoot(document.getElementById('root')!).render(
@@ -22,4 +22,4 @@ const enableMocking = async () => {
   })
 }
 
-enableMocking().then(renderApp)
+void enableMocking().then(renderApp)
