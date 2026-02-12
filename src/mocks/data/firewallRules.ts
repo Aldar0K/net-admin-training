@@ -1,0 +1,113 @@
+export type MockFirewallRule = {
+  id: string
+  name: string
+  source: string
+  destination: string
+  protocol: 'TCP' | 'UDP' | 'ICMP'
+  port: string
+  action: 'allow' | 'deny'
+  enabled: boolean
+}
+
+export const firewallRules: MockFirewallRule[] = [
+  {
+    id: 'rule-001',
+    name: 'Allow HTTPS Outbound',
+    source: '10.10.0.0/24',
+    destination: '0.0.0.0/0',
+    protocol: 'TCP',
+    port: '443',
+    action: 'allow',
+    enabled: true,
+  },
+  {
+    id: 'rule-002',
+    name: 'Allow DNS to Resolver',
+    source: '10.10.0.0/24',
+    destination: '10.10.1.53',
+    protocol: 'UDP',
+    port: '53',
+    action: 'allow',
+    enabled: true,
+  },
+  {
+    id: 'rule-003',
+    name: 'Block Telnet',
+    source: '0.0.0.0/0',
+    destination: '10.10.2.0/24',
+    protocol: 'TCP',
+    port: '23',
+    action: 'deny',
+    enabled: true,
+  },
+  {
+    id: 'rule-004',
+    name: 'Allow SSH Admin VLAN',
+    source: '10.99.0.0/24',
+    destination: '10.10.2.10',
+    protocol: 'TCP',
+    port: '22',
+    action: 'allow',
+    enabled: true,
+  },
+  {
+    id: 'rule-005',
+    name: 'Block SMB from Guest',
+    source: '10.50.0.0/24',
+    destination: '10.10.20.0/24',
+    protocol: 'TCP',
+    port: '445',
+    action: 'deny',
+    enabled: true,
+  },
+  {
+    id: 'rule-006',
+    name: 'Allow NTP',
+    source: '10.10.0.0/24',
+    destination: '10.10.1.123',
+    protocol: 'UDP',
+    port: '123',
+    action: 'allow',
+    enabled: true,
+  },
+  {
+    id: 'rule-007',
+    name: 'Allow ICMP Monitoring',
+    source: '10.200.0.0/24',
+    destination: '10.10.0.0/16',
+    protocol: 'ICMP',
+    port: '-',
+    action: 'allow',
+    enabled: true,
+  },
+  {
+    id: 'rule-008',
+    name: 'Deny RDP Internet',
+    source: '0.0.0.0/0',
+    destination: '10.10.30.15',
+    protocol: 'TCP',
+    port: '3389',
+    action: 'deny',
+    enabled: true,
+  },
+  {
+    id: 'rule-009',
+    name: 'Allow API Gateway',
+    source: '10.10.40.0/24',
+    destination: '10.10.41.10',
+    protocol: 'TCP',
+    port: '8443',
+    action: 'allow',
+    enabled: false,
+  },
+  {
+    id: 'rule-010',
+    name: 'Block Legacy FTP',
+    source: '10.10.0.0/16',
+    destination: '10.10.60.20',
+    protocol: 'TCP',
+    port: '21',
+    action: 'deny',
+    enabled: true,
+  },
+]
