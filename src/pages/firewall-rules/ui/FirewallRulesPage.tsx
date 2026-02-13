@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 
-import { getFirewallRules, type FirewallRule } from '@/entities/firewall-rule'
-import { ApiError } from '@/shared/api'
+import {
+  fetchFirewallRules,
+  selectAllFirewallRules,
+  selectFirewallRuleError,
+  selectFirewallRuleStatus,
+} from '@/entities/firewall-rule'
+import { useAppDispatch, useAppSelector } from '@/app'
 import { Button, Card, CardContent, CardHeader, CardTitle, Input } from '@/shared/ui'
-
-type LoadStatus = 'idle' | 'loading' | 'success' | 'error'
 
 const getErrorModeFromUrl = () =>
   new URLSearchParams(window.location.search).get('error') === '1'
@@ -24,38 +27,16 @@ const updateErrorModeInUrl = (enabled: boolean) => {
 }
 
 export const FirewallRulesPage = () => {
-  const [rules, setRules] = useState<FirewallRule[]>([])
-  const [status, setStatus] = useState<LoadStatus>('loading')
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const [simulateError, setSimulateError] = useState(getErrorModeFromUrl)
+  const dispatch = useAppDispatch()
+  const rules = useAppSelector(selectAllFirewallRules)
+  const status = useAppSelector(selectFirewallRuleStatus)
+  const error = useAppSelector(selectFirewallRuleError)
+  const [errorMode, setErrorMode] = useState(getErrorModeFromUrl)
   const [searchValue, setSearchValue] = useState('')
-  const [reloadToken, setReloadToken] = useState(0)
 
   useEffect(() => {
-    let isActive = true
-
-    getFirewallRules({ simulateError })
-      .then((data) => {
-        if (!isActive) return
-
-        setRules(data)
-        setErrorMessage(null)
-        setStatus('success')
-      })
-      .catch((error) => {
-        if (!isActive) return
-
-        setRules([])
-        setStatus('error')
-        setErrorMessage(
-          error instanceof ApiError ? error.message : 'Unexpected error while loading rules',
-        )
-      })
-
-    return () => {
-      isActive = false
-    }
-  }, [simulateError, reloadToken])
+    void dispatch(fetchFirewallRules({ errorMode }))
+  }, [dispatch, errorMode])
 
   const filteredRules = useMemo(() => {
     const query = searchValue.trim().toLowerCase()
@@ -72,12 +53,10 @@ export const FirewallRulesPage = () => {
     )
   }, [rules, searchValue])
 
-  const endpoint = simulateError ? '/api/firewall-rules?error=1' : '/api/firewall-rules'
+  const endpoint = errorMode ? '/api/firewall-rules?error=1' : '/api/firewall-rules'
 
   const handleToggleError = () => {
-    setStatus('loading')
-    setErrorMessage(null)
-    setSimulateError((previous) => {
+    setErrorMode((previous) => {
       const nextValue = !previous
       updateErrorModeInUrl(nextValue)
       return nextValue
@@ -85,9 +64,7 @@ export const FirewallRulesPage = () => {
   }
 
   const handleReload = () => {
-    setStatus('loading')
-    setErrorMessage(null)
-    setReloadToken((value) => value + 1)
+    void dispatch(fetchFirewallRules({ errorMode }))
   }
 
   return (
@@ -110,31 +87,33 @@ export const FirewallRulesPage = () => {
           </Button>
           <Button
             type="button"
-            variant={simulateError ? 'destructive' : 'default'}
+            variant={errorMode ? 'destructive' : 'default'}
             onClick={handleToggleError}
           >
-            {simulateError ? 'Disable error mode' : 'Simulate error'}
+            {errorMode ? 'Disable error mode' : 'Simulate error'}
           </Button>
         </CardContent>
       </Card>
 
       <Card>
         <CardContent className="pt-6">
-          {status === 'loading' && (
+          {(status === 'loading' || status === 'idle') && (
             <p className="text-sm text-muted-foreground">Loading firewall rules...</p>
           )}
 
-          {status === 'error' && (
-            <p className="text-sm text-destructive">Error: {errorMessage}</p>
+          {status === 'failed' && (
+            <p className="text-sm text-destructive">
+              Error: {error ?? 'Failed to load firewall rules'}
+            </p>
           )}
 
-          {status === 'success' && filteredRules.length === 0 && (
+          {status === 'succeeded' && filteredRules.length === 0 && (
             <p className="text-sm text-muted-foreground">
               No rules found. Try clearing filter or disabling error mode.
             </p>
           )}
 
-          {status === 'success' && filteredRules.length > 0 && (
+          {status === 'succeeded' && filteredRules.length > 0 && (
             <div className="overflow-x-auto">
               <table className="w-full min-w-[720px] border-collapse text-sm">
                 <thead>
