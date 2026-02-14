@@ -6,8 +6,13 @@ import {
   selectFirewallRuleError,
   selectFirewallRuleStatus,
 } from '@/entities/firewall-rule'
+import type { FetchFirewallRulesParams } from '@/entities/firewall-rule'
 import { useAppDispatch, useAppSelector } from '@/app'
+import { useDebounce } from '@/shared/hooks'
 import { Button, Card, CardContent, CardHeader, CardTitle, Input } from '@/shared/ui'
+
+type ActionFilter = 'all' | 'allow' | 'deny'
+const LOADER_ROWS = 6
 
 const getErrorModeFromUrl = () =>
   new URLSearchParams(window.location.search).get('error') === '1'
@@ -32,28 +37,58 @@ export const FirewallRulesPage = () => {
   const status = useAppSelector(selectFirewallRuleStatus)
   const error = useAppSelector(selectFirewallRuleError)
   const [errorMode, setErrorMode] = useState(getErrorModeFromUrl)
-  const [searchValue, setSearchValue] = useState('')
+  const [q, setQ] = useState('')
+  const [enabledOnly, setEnabledOnly] = useState(false)
+  const [action, setAction] = useState<ActionFilter>('all')
+  const qDebounced = useDebounce(q, 350)
+  const requestParams = useMemo<FetchFirewallRulesParams>(
+    () => ({
+      q: qDebounced.trim() || undefined,
+      enabled: enabledOnly ? true : undefined,
+      action: action === 'all' ? undefined : action,
+      errorMode,
+    }),
+    [qDebounced, enabledOnly, action, errorMode],
+  )
 
   useEffect(() => {
-    void dispatch(fetchFirewallRules({ errorMode }))
-  }, [dispatch, errorMode])
+    void dispatch(fetchFirewallRules(requestParams))
+  }, [dispatch, requestParams])
 
   const filteredRules = useMemo(() => {
-    const query = searchValue.trim().toLowerCase()
+    const query = q.trim().toLowerCase()
 
-    if (!query) {
-      return rules
+    return rules.filter((rule) => {
+      const matchQ = query ? rule.name.toLowerCase().includes(query) : true
+      const matchEnabled = enabledOnly ? rule.enabled : true
+      const matchAction = action === 'all' ? true : rule.action === action
+
+      return matchQ && matchEnabled && matchAction
+    })
+  }, [rules, q, enabledOnly, action])
+
+  const endpoint = useMemo(() => {
+    const query = new URLSearchParams()
+
+    if (requestParams.q) {
+      query.set('q', requestParams.q)
     }
 
-    return rules.filter((rule) =>
-      [rule.name, rule.source, rule.destination, rule.protocol, rule.port, rule.action]
-        .join(' ')
-        .toLowerCase()
-        .includes(query),
-    )
-  }, [rules, searchValue])
+    if (requestParams.enabled) {
+      query.set('enabled', 'true')
+    }
 
-  const endpoint = errorMode ? '/api/firewall-rules?error=1' : '/api/firewall-rules'
+    if (requestParams.action) {
+      query.set('action', requestParams.action)
+    }
+
+    if (requestParams.errorMode) {
+      query.set('error', '1')
+    }
+
+    const search = query.toString()
+    return search ? `/api/firewall-rules?${search}` : '/api/firewall-rules'
+  }, [requestParams])
 
   const handleToggleError = () => {
     setErrorMode((previous) => {
@@ -64,7 +99,13 @@ export const FirewallRulesPage = () => {
   }
 
   const handleReload = () => {
-    void dispatch(fetchFirewallRules({ errorMode }))
+    void dispatch(fetchFirewallRules(requestParams))
+  }
+
+  const handleResetFilters = () => {
+    setQ('')
+    setEnabledOnly(false)
+    setAction('all')
   }
 
   return (
@@ -76,15 +117,40 @@ export const FirewallRulesPage = () => {
             Source endpoint: <code>{endpoint}</code>
           </p>
         </CardHeader>
-        <CardContent className="flex flex-col gap-3 md:flex-row md:items-center">
-          <Input
-            placeholder="Filter by name/source/destination..."
-            value={searchValue}
-            onChange={(event) => setSearchValue(event.target.value)}
-          />
-          <Button type="button" variant="outline" onClick={handleReload}>
-            Reload
-          </Button>
+        <CardContent className="space-y-3">
+          <div className="grid gap-3 md:grid-cols-[1fr_auto_auto] md:items-center">
+            <Input
+              placeholder="Search by name..."
+              value={q}
+              onChange={(event) => setQ(event.target.value)}
+            />
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                className="h-4 w-4"
+                checked={enabledOnly}
+                onChange={(event) => setEnabledOnly(event.target.checked)}
+              />
+              Enabled only
+            </label>
+            <select
+              value={action}
+              onChange={(event) => setAction(event.target.value as ActionFilter)}
+              className="h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm"
+            >
+              <option value="all">All actions</option>
+              <option value="allow">Allow</option>
+              <option value="deny">Deny</option>
+            </select>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button type="button" variant="outline" onClick={handleResetFilters}>
+              Reset
+            </Button>
+            <Button type="button" variant="outline" onClick={handleReload}>
+              Reload
+            </Button>
+          </div>
           <Button
             type="button"
             variant={errorMode ? 'destructive' : 'default'}
@@ -98,7 +164,17 @@ export const FirewallRulesPage = () => {
       <Card>
         <CardContent className="pt-6">
           {(status === 'loading' || status === 'idle') && (
-            <p className="text-sm text-muted-foreground">Loading firewall rules...</p>
+            <div className="space-y-3">
+              <div className="h-4 w-48 animate-pulse rounded bg-muted" />
+              <div className="space-y-2">
+                {Array.from({ length: LOADER_ROWS }).map((_, index) => (
+                  <div
+                    key={`rules-skeleton-${index}`}
+                    className="h-10 w-full animate-pulse rounded-md bg-muted/70"
+                  />
+                ))}
+              </div>
+            </div>
           )}
 
           {status === 'failed' && (
