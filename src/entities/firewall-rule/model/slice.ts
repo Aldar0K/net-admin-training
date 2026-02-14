@@ -1,12 +1,7 @@
-import { createAsyncThunk, createSlice } from '@reduxjs/toolkit'
-
-import { getFirewallRules } from '../api'
+import { createSlice } from '@reduxjs/toolkit'
 import { firewallRuleSliceKey } from './const'
+import { fetchFirewallRules } from './thunks/fetchFirewallRules'
 import type { FirewallRule } from './types'
-
-type FetchFirewallRulesParams = {
-  errorMode?: boolean
-}
 
 type FirewallRuleStatus = 'idle' | 'loading' | 'succeeded' | 'failed'
 
@@ -35,17 +30,6 @@ const normalizeRules = (rules: FirewallRule[]) => {
 
   return { ids, entities }
 }
-
-export const fetchFirewallRules = createAsyncThunk<
-  FirewallRule[],
-  FetchFirewallRulesParams | undefined
->(`${firewallRuleSliceKey}/fetchFirewallRules`, async (params) => {
-  const errorMode = params?.errorMode ?? false
-
-  return getFirewallRules({
-    simulateError: errorMode,
-  })
-})
 
 const firewallRuleSlice = createSlice({
   name: firewallRuleSliceKey,
@@ -86,4 +70,4 @@ export const {
   reducer: firewallRuleReducer,
   actions: firewallRuleActions
 } = firewallRuleSlice
-export type { FetchFirewallRulesParams, FirewallRuleStatus }
+export type { FirewallRuleStatus }

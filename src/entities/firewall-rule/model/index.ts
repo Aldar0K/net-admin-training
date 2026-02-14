@@ -1,23 +1,21 @@
-export type {
-  FirewallRule,
-  FirewallRuleAction,
-  FirewallRuleProtocol,
-} from './types'
 export { firewallRuleSliceKey } from './const'
-export {
-  fetchFirewallRules,
-  firewallRuleReducer,
-} from './slice'
 export {
   selectAllFirewallRules,
   selectFirewallRuleEntities,
   selectFirewallRuleError,
   selectFirewallRuleIds,
   selectFirewallRuleSchema,
-  selectFirewallRuleStatus,
+  selectFirewallRuleStatus
 } from './selectors'
+export { firewallRuleReducer } from './slice'
 export type {
-  FetchFirewallRulesParams,
   FirewallRuleSchema,
-  FirewallRuleStatus,
+  FirewallRuleStatus
 } from './slice'
+export { fetchFirewallRules } from './thunks'
+export type { FetchFirewallRulesParams } from './thunks'
+export type {
+  FirewallRule,
+  FirewallRuleAction,
+  FirewallRuleProtocol
+} from './types'
