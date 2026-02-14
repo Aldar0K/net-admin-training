@@ -1,13 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 
-import {
-  fetchFirewallRules,
-  selectAllFirewallRules,
-  selectFirewallRuleError,
-  selectFirewallRuleStatus,
-} from '@/entities/firewall-rule'
-import type { FetchFirewallRulesParams } from '@/entities/firewall-rule'
-import { useAppDispatch, useAppSelector } from '@/app'
+import type { GetFirewallRulesArgs } from '@/entities/firewall-rule'
+import { useGetFirewallRulesQuery } from '@/entities/firewall-rule'
+import { getRtkQueryErrorMessage } from '@/shared/api'
 import { useDebounce } from '@/shared/hooks'
 import { Button, Card, CardContent, CardHeader, CardTitle, Input } from '@/shared/ui'
 
@@ -32,16 +27,13 @@ const updateErrorModeInUrl = (enabled: boolean) => {
 }
 
 export const FirewallRulesPage = () => {
-  const dispatch = useAppDispatch()
-  const rules = useAppSelector(selectAllFirewallRules)
-  const status = useAppSelector(selectFirewallRuleStatus)
-  const error = useAppSelector(selectFirewallRuleError)
   const [errorMode, setErrorMode] = useState(getErrorModeFromUrl)
   const [q, setQ] = useState('')
   const [enabledOnly, setEnabledOnly] = useState(false)
   const [action, setAction] = useState<ActionFilter>('all')
   const qDebounced = useDebounce(q, 350)
-  const requestParams = useMemo<FetchFirewallRulesParams>(
+
+  const requestParams = useMemo<GetFirewallRulesArgs>(
     () => ({
       q: qDebounced.trim() || undefined,
       enabled: enabledOnly ? true : undefined,
@@ -51,21 +43,17 @@ export const FirewallRulesPage = () => {
     [qDebounced, enabledOnly, action, errorMode],
   )
 
-  useEffect(() => {
-    void dispatch(fetchFirewallRules(requestParams))
-  }, [dispatch, requestParams])
+  const {
+    data: rules = [],
+    error,
+    isError,
+    isLoading,
+    isFetching,
+    isSuccess,
+    refetch,
+  } = useGetFirewallRulesQuery(requestParams)
 
-  const filteredRules = useMemo(() => {
-    const query = q.trim().toLowerCase()
-
-    return rules.filter((rule) => {
-      const matchQ = query ? rule.name.toLowerCase().includes(query) : true
-      const matchEnabled = enabledOnly ? rule.enabled : true
-      const matchAction = action === 'all' ? true : rule.action === action
-
-      return matchQ && matchEnabled && matchAction
-    })
-  }, [rules, q, enabledOnly, action])
+  const errorMessage = getRtkQueryErrorMessage(error, 'Failed to load firewall rules')
 
   const endpoint = useMemo(() => {
     const query = new URLSearchParams()
@@ -99,7 +87,7 @@ export const FirewallRulesPage = () => {
   }
 
   const handleReload = () => {
-    void dispatch(fetchFirewallRules(requestParams))
+    void refetch()
   }
 
   const handleResetFilters = () => {
@@ -116,6 +104,9 @@ export const FirewallRulesPage = () => {
           <p className="text-sm text-muted-foreground">
             Source endpoint: <code>{endpoint}</code>
           </p>
+          {isFetching && !isLoading && (
+            <p className="text-xs text-muted-foreground">Updating...</p>
+          )}
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="grid gap-3 md:grid-cols-[1fr_auto_auto] md:items-center">
@@ -163,7 +154,7 @@ export const FirewallRulesPage = () => {
 
       <Card>
         <CardContent className="pt-6">
-          {(status === 'loading' || status === 'idle') && (
+          {isLoading && (
             <div className="space-y-3">
               <div className="h-4 w-48 animate-pulse rounded bg-muted" />
               <div className="space-y-2">
@@ -177,19 +168,19 @@ export const FirewallRulesPage = () => {
             </div>
           )}
 
-          {status === 'failed' && (
+          {isError && (
             <p className="text-sm text-destructive">
-              Error: {error ?? 'Failed to load firewall rules'}
+              Error: {errorMessage}
             </p>
           )}
 
-          {status === 'succeeded' && filteredRules.length === 0 && (
+          {isSuccess && rules.length === 0 && (
             <p className="text-sm text-muted-foreground">
               No rules found. Try clearing filter or disabling error mode.
             </p>
           )}
 
-          {status === 'succeeded' && filteredRules.length > 0 && (
+          {isSuccess && rules.length > 0 && (
             <div className="overflow-x-auto">
               <table className="w-full min-w-[720px] border-collapse text-sm">
                 <thead>
@@ -205,7 +196,7 @@ export const FirewallRulesPage = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredRules.map((rule) => (
+                  {rules.map((rule) => (
                     <tr key={rule.id} className="border-b">
                       <td className="px-3 py-2">{rule.id}</td>
                       <td className="px-3 py-2">{rule.name}</td>

@@ -1,4 +1,6 @@
 export { getFirewallRules } from './api'
+export { useGetFirewallRulesQuery } from './api'
+export type { GetFirewallRulesArgs } from './api'
 export {
   fetchFirewallRules,
   firewallRuleReducer,
