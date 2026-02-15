@@ -1,14 +1,33 @@
+import { Search } from 'lucide-react'
 import { useMemo, useState } from 'react'
 
 import type { GetFirewallRulesDTO } from '@/entities/firewall-rule'
 import { useGetFirewallRulesQuery } from '@/entities/firewall-rule'
 import { getRtkQueryErrorMessage } from '@/shared/api'
 import { useDebounce } from '@/shared/hooks'
-import { Button, Card, CardContent, CardHeader, CardTitle, Input } from '@/shared/ui'
+import {
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CheckboxField,
+  SelectField,
+  type SelectFieldOption,
+  TextField,
+} from '@/shared/ui'
 import { FirewallRuleRow } from './FirewallRuleRow'
 
 type ActionFilter = 'all' | 'allow' | 'deny'
 const LOADER_ROWS = 6
+const ACTION_OPTIONS: SelectFieldOption[] = [
+  { value: 'all', label: 'All actions' },
+  { value: 'allow', label: 'Allow' },
+  { value: 'deny', label: 'Deny' },
+]
+
+const isActionFilter = (value: string): value is ActionFilter =>
+  value === 'all' || value === 'allow' || value === 'deny'
 
 const getErrorModeFromUrl = () =>
   new URLSearchParams(window.location.search).get('error') === '1'
@@ -102,46 +121,54 @@ export const FirewallRulesPage = () => {
       <Card>
         <CardHeader className="space-y-2">
           <CardTitle>Firewall Rules</CardTitle>
-          <div className='flex justify-between items-center gap-4'>
+          <div className="flex items-center justify-between gap-4">
             <p className="text-sm text-muted-foreground">
               Source endpoint: <code>{endpoint}</code>
             </p>
             {isFetching && !isLoading && (
-              <p className="text-xs text-muted-foreground">Updating...</p>
+              <p className="text-xs text-muted-foreground" role="status" aria-live="polite">
+                Updating...
+              </p>
             )}
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="grid gap-3 md:grid-cols-[1fr_auto_auto] md:items-center">
-            <Input
-              placeholder="Search by name..."
+            <TextField
+              label="Search rules"
+              helperText={q !== qDebounced ? 'Applying filter...' : 'Search by rule name'}
+              placeholder="Search firewall rules..."
+              endIcon={<Search />}
               value={q}
               onChange={(event) => setQ(event.target.value)}
             />
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                className="h-4 w-4"
-                checked={enabledOnly}
-                onChange={(event) => setEnabledOnly(event.target.checked)}
-              />
-              Enabled only
-            </label>
-            <select
+            <CheckboxField
+              label="Enabled only"
+              checked={enabledOnly}
+              onChange={(event) => setEnabledOnly(event.target.checked)}
+            />
+            <SelectField
               value={action}
-              onChange={(event) => setAction(event.target.value as ActionFilter)}
-              className="h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm"
-            >
-              <option value="all">All actions</option>
-              <option value="allow">Allow</option>
-              <option value="deny">Deny</option>
-            </select>
+              onValueChange={(value) => {
+                if (isActionFilter(value)) {
+                  setAction(value)
+                }
+              }}
+              options={ACTION_OPTIONS}
+              placeholder="Select action"
+            />
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Button type="button" variant="outline" onClick={handleResetFilters}>
+            <Button type="button" variant="secondary" size="sm" onClick={handleResetFilters}>
               Reset
             </Button>
-            <Button type="button" variant="outline" onClick={handleReload}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              loading={isFetching && !isLoading}
+              onClick={handleReload}
+            >
               Reload
             </Button>
           </div>
@@ -172,7 +199,7 @@ export const FirewallRulesPage = () => {
           )}
 
           {isError && (
-            <p className="text-sm text-destructive">
+            <p className="text-sm text-destructive" role="alert">
               Error: {errorMessage}
             </p>
           )}
@@ -186,21 +213,22 @@ export const FirewallRulesPage = () => {
           {isSuccess && rules.length > 0 && (
             <div className="overflow-x-auto">
               <table className="w-full min-w-[720px] border-collapse text-sm">
+                <caption className="sr-only">Firewall rules list</caption>
                 <thead>
                   <tr className="border-b">
-                    <th className="px-3 py-2 text-left font-medium">ID</th>
-                    <th className="px-3 py-2 text-left font-medium">Name</th>
-                    <th className="px-3 py-2 text-left font-medium">Source</th>
-                    <th className="px-3 py-2 text-left font-medium">Destination</th>
-                    <th className="px-3 py-2 text-left font-medium">Protocol</th>
-                    <th className="px-3 py-2 text-left font-medium">Port</th>
-                    <th className="px-3 py-2 text-left font-medium">Action</th>
-                    <th className="px-3 py-2 text-left font-medium">Enabled</th>
+                    <th scope="col" className="px-3 py-2 text-left font-medium">ID</th>
+                    <th scope="col" className="px-3 py-2 text-left font-medium">Name</th>
+                    <th scope="col" className="px-3 py-2 text-left font-medium">Source</th>
+                    <th scope="col" className="px-3 py-2 text-left font-medium">Destination</th>
+                    <th scope="col" className="px-3 py-2 text-left font-medium">Protocol</th>
+                    <th scope="col" className="px-3 py-2 text-left font-medium">Port</th>
+                    <th scope="col" className="px-3 py-2 text-left font-medium">Action</th>
+                    <th scope="col" className="px-3 py-2 text-left font-medium">Enabled</th>
                   </tr>
                 </thead>
                 <tbody>
                   {rules.map((rule) => (
-                    <FirewallRuleRow key={rule.id} rule={rule} queryArgs={requestParams} />
+                    <FirewallRuleRow key={rule.id} rule={rule} />
                   ))}
                 </tbody>
               </table>

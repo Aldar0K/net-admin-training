@@ -13,7 +13,6 @@ export type GetFirewallRulesDTO = {
 export type UpdateFirewallRuleDTO = {
   id: FirewallRule['id']
   changes: Partial<Omit<FirewallRule, 'id'>>
-  queryArgs: GetFirewallRulesDTO | void
   mutError?: boolean
 }
 
@@ -65,26 +64,33 @@ export const firewallRuleRtkApi = baseApi.injectEndpoints({
         body: changes,
         params: mutError ? { mutError: '1' } : undefined,
       }),
-      async onQueryStarted(arg, { dispatch, queryFulfilled }) {
-        const patchResult = dispatch(
-          firewallRuleRtkApi.util.updateQueryData(
-            'getFirewallRules',
-            arg.queryArgs,
-            (draftRules) => {
-              const targetRule = draftRules.find((rule) => rule.id === arg.id)
-              if (!targetRule) {
-                return
-              }
+      async onQueryStarted(arg, { dispatch, getState, queryFulfilled }) {
+        const cachedArgs = firewallRuleRtkApi.util.selectCachedArgsForQuery(
+          getState(),
+          'getFirewallRules',
+        )
 
-              Object.assign(targetRule, arg.changes)
-            },
+        const patchResults = cachedArgs.map((cachedArg) =>
+          dispatch(
+            firewallRuleRtkApi.util.updateQueryData(
+              'getFirewallRules',
+              cachedArg,
+              (draftRules) => {
+                const targetRule = draftRules.find((rule) => rule.id === arg.id)
+                if (!targetRule) {
+                  return
+                }
+
+                Object.assign(targetRule, arg.changes)
+              },
+            ),
           ),
         )
 
         try {
           await queryFulfilled
         } catch {
-          patchResult.undo()
+          patchResults.forEach((patchResult) => patchResult.undo())
         }
       },
       invalidatesTags: (_result, error, arg) =>
