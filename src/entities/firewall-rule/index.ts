@@ -1,6 +1,6 @@
 export { getFirewallRules } from './api'
-export { useGetFirewallRulesQuery } from './api'
-export type { GetFirewallRulesArgs } from './api'
+export { useGetFirewallRulesQuery, useUpdateFirewallRuleMutation } from './api'
+export type { GetFirewallRulesDTO, UpdateFirewallRuleDTO } from './api'
 export {
   fetchFirewallRules,
   firewallRuleReducer,

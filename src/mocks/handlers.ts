@@ -1,9 +1,12 @@
 import { delay, http, HttpResponse } from 'msw'
 
+import type { FirewallRule } from '@/entities/firewall-rule'
 import { firewallRules } from '@/mocks/data/firewallRules'
 
 const randomDelay = (minMs: number, maxMs: number) =>
   Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs
+
+type FirewallRulePatchBody = Partial<Omit<FirewallRule, 'id'>>
 
 export const handlers = [
   http.get('/api/firewall-rules', async ({ request }) => {
@@ -32,5 +35,42 @@ export const handlers = [
     })
 
     return HttpResponse.json(filteredRules, { status: 200 })
+  }),
+  http.patch('/api/firewall-rules/:id', async ({ params, request }) => {
+    const url = new URL(request.url)
+    const shouldFail = url.searchParams.get('mutError') === '1'
+    const id = String(params.id)
+
+    await delay(randomDelay(400, 800))
+
+    if (shouldFail) {
+      return HttpResponse.json(
+        { message: 'Simulated firewall rule update error' },
+        { status: 500 },
+      )
+    }
+
+    const ruleIndex = firewallRules.findIndex((rule) => rule.id === id)
+    if (ruleIndex === -1) {
+      return HttpResponse.json({ message: 'Firewall rule not found' }, { status: 404 })
+    }
+
+    let payload: FirewallRulePatchBody
+    try {
+      payload = (await request.json()) as FirewallRulePatchBody
+    } catch {
+      return HttpResponse.json({ message: 'Invalid JSON payload' }, { status: 400 })
+    }
+
+    const currentRule = firewallRules[ruleIndex]
+    const nextRule: FirewallRule = {
+      ...currentRule,
+      ...payload,
+      id: currentRule.id,
+    }
+
+    firewallRules[ruleIndex] = nextRule
+
+    return HttpResponse.json(nextRule, { status: 200 })
   }),
 ]

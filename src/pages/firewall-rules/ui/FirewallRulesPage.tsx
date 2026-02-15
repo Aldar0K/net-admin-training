@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react'
 
-import type { GetFirewallRulesArgs } from '@/entities/firewall-rule'
+import type { GetFirewallRulesDTO } from '@/entities/firewall-rule'
 import { useGetFirewallRulesQuery } from '@/entities/firewall-rule'
 import { getRtkQueryErrorMessage } from '@/shared/api'
 import { useDebounce } from '@/shared/hooks'
 import { Button, Card, CardContent, CardHeader, CardTitle, Input } from '@/shared/ui'
+import { FirewallRuleRow } from './FirewallRuleRow'
 
 type ActionFilter = 'all' | 'allow' | 'deny'
 const LOADER_ROWS = 6
@@ -33,7 +34,7 @@ export const FirewallRulesPage = () => {
   const [action, setAction] = useState<ActionFilter>('all')
   const qDebounced = useDebounce(q, 350)
 
-  const requestParams = useMemo<GetFirewallRulesArgs>(
+  const requestParams = useMemo<GetFirewallRulesDTO>(
     () => ({
       q: qDebounced.trim() || undefined,
       enabled: enabledOnly ? true : undefined,
@@ -101,12 +102,14 @@ export const FirewallRulesPage = () => {
       <Card>
         <CardHeader className="space-y-2">
           <CardTitle>Firewall Rules</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Source endpoint: <code>{endpoint}</code>
-          </p>
-          {isFetching && !isLoading && (
-            <p className="text-xs text-muted-foreground">Updating...</p>
-          )}
+          <div className='flex justify-between items-center gap-4'>
+            <p className="text-sm text-muted-foreground">
+              Source endpoint: <code>{endpoint}</code>
+            </p>
+            {isFetching && !isLoading && (
+              <p className="text-xs text-muted-foreground">Updating...</p>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="grid gap-3 md:grid-cols-[1fr_auto_auto] md:items-center">
@@ -197,16 +200,7 @@ export const FirewallRulesPage = () => {
                 </thead>
                 <tbody>
                   {rules.map((rule) => (
-                    <tr key={rule.id} className="border-b">
-                      <td className="px-3 py-2">{rule.id}</td>
-                      <td className="px-3 py-2">{rule.name}</td>
-                      <td className="px-3 py-2">{rule.source}</td>
-                      <td className="px-3 py-2">{rule.destination}</td>
-                      <td className="px-3 py-2">{rule.protocol}</td>
-                      <td className="px-3 py-2">{rule.port}</td>
-                      <td className="px-3 py-2">{rule.action}</td>
-                      <td className="px-3 py-2">{rule.enabled ? 'Yes' : 'No'}</td>
-                    </tr>
+                    <FirewallRuleRow key={rule.id} rule={rule} queryArgs={requestParams} />
                   ))}
                 </tbody>
               </table>
